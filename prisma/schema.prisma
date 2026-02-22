@@ -1,0 +1,183 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AlbumType {
+  album
+  single
+  compilation
+}
+
+model Song {
+  id           String   @id
+  title        String
+  images       Json
+  release_date DateTime
+  track_number Int
+  disc_number  Int
+  duration     Int
+  explicit     Boolean
+  isrc         String
+
+  // Relations
+  album        Album    @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  albumId      String
+
+  artists      Artist[] @relation("SongArtists")
+  nightcores   Nightcore[]
+  favorites    Favorite[]
+
+  @@map("songs")
+}
+
+model Nightcore {
+  id           String   @id
+  urls         String[]
+  title        String
+  images       Json
+  release_date DateTime
+  duration     Int
+
+  // Relations
+  uploader     Uploader @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+  uploaderId   String
+
+  song         Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
+  songId       String
+
+  artists      Artist[] @relation("NightcoreArtists")
+  album        Album?   @relation(fields: [albumId], references: [id], onDelete: SetNull)
+  albumId      String?
+
+  favorites    Favorite[]
+  playlists    PlaylistNightcore[]
+
+  @@map("nightcores")
+}
+
+model Artist {
+  id           String   @id
+  name         String
+  images       Json?
+
+  songs        Song[]   @relation("SongArtists")
+  nightcores   Nightcore[] @relation("NightcoreArtists")
+  albums       Album[]  @relation("AlbumArtists")
+  favorites    Favorite[]
+
+  @@map("artists")
+}
+
+model Uploader {
+  id           String   @id
+  name         String
+  images       Json
+  created_at   DateTime
+
+  nightcores   Nightcore[]
+  favorites    Favorite[]
+
+  @@map("uploaders")
+}
+
+model Album {
+  id           String   @id
+  title        String
+  album_type   AlbumType
+  total_tracks Int
+  release_date DateTime
+  images       Json
+  label        String
+  upc          String?
+
+  artists      Artist[] @relation("AlbumArtists")
+  songs        Song[]
+  nightcores   Nightcore[]
+  favorites    Favorite[]
+
+  @@map("albums")
+}
+
+model User {
+  id              String    @id @default(cuid())
+  username        String    @unique
+  name            String?
+  profile_picture String?
+  profile_banner  String?
+  bio             String?
+  links           String[]
+
+  followers       Follow[]  @relation("following")
+  following       Follow[]  @relation("follower")
+  favorites       Favorite[]
+  playlists       Playlist[]
+
+  @@map("users")
+}
+
+model Follow {
+  followerId   String
+  followingId  String
+  follower     User @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following    User @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+  @@map("follows")
+}
+
+model Playlist {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  owner       User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId     String
+
+  nightcores  PlaylistNightcore[]
+  favorites   Favorite[]
+
+  @@map("playlists")
+}
+
+model PlaylistNightcore {
+  playlistId   String
+  nightcoreId  String
+  playlist     Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  nightcore    Nightcore @relation(fields: [nightcoreId], references: [id], onDelete: Cascade)
+  addedAt      DateTime @default(now())
+
+  @@id([playlistId, nightcoreId])
+  @@map("playlist_nightcores")
+}
+
+model Favorite {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+
+  songId      String?
+  song        Song?    @relation(fields: [songId], references: [id], onDelete: Cascade)
+  nightcoreId String?
+  nightcore   Nightcore? @relation(fields: [nightcoreId], references: [id], onDelete: Cascade)
+  artistId    String?
+  artist      Artist?  @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  uploaderId  String?
+  uploader    Uploader? @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+  albumId     String?
+  album       Album?   @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  playlistId  String?
+  playlist    Playlist? @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, songId])
+  @@unique([userId, nightcoreId])
+  @@unique([userId, artistId])
+  @@unique([userId, uploaderId])
+  @@unique([userId, albumId])
+  @@unique([userId, playlistId])
+  @@map("favorites")
+}
